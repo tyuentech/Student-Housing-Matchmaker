@@ -7,12 +7,14 @@ This project was made for a semester long data science class project. Our goal w
 ## Technology
 - Python (pandas, numpy, matplotlib, seaborn, sklearn, geopy)
 - Jupyter Notebook (.ipynb)
-Our methodology and progress report can be seen [/notebooks](https://github.com/tyuentech/Student-Housing-Matchmaker/tree/main/notebooks)
+
+Our methodology and progress report can be seen in [/notebooks](https://github.com/tyuentech/Student-Housing-Matchmaker/tree/main/notebooks)
 
 ## Data Sources
 - Sample of rental listings in Chicago from Zillow
 - Chicago Public Transit (Divvy Bike Stations, CTA Bus Stops, Chicago "L")
 - Colleges in Chicago
+
 Both raw and cleaned datasets can be found in the [/data](https://github.com/tyuentech/Student-Housing-Matchmaker/tree/main/data) folder.
 
 ## Visualizations and Machine Learning
