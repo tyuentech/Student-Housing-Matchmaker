@@ -1,0 +1,187 @@
+<body>
+    <h1>Student Housing Matchmaker</h1>
+
+    <label for="university">Select a University:</label>
+    <select id="university">
+        <option value="" disabled selected>Select a University</option>
+    </select>
+
+    <div id="details" style="display:none; margin-top: 20px;">
+        <h2>Details</h2>
+        <table style="width: 100%; text-align: center; table-layout: fixed;">
+            <tr>
+                <th>University Name</th>
+                <th>Address</th>
+                <!-- <th>Latitude</th>
+                <th>Longitude</th> -->
+            </tr>
+            <tr>
+                <td id="name"></td>
+                <td id="address"></td>
+                <!-- <td id="latitude"></td>
+                <td id="longitude"></td> -->
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        let colleges = [];
+
+        // Fetch data from Flask API
+        fetch('/colleges')
+            .then(response => response.json())
+            .then(data => {
+                colleges = data;
+
+                const select = document.getElementById('university');
+
+                // Populate dropdown
+                colleges.forEach(college => {
+                    const option = document.createElement('option');
+                    option.value = college.Name;
+                    option.textContent = college.Name;
+                    option.setAttribute('data-lat', college.Latitude);
+                    option.setAttribute('data-lon', college.Longitude);
+                    select.appendChild(option);
+                });
+
+                // Add event listener for dropdown change
+                select.addEventListener('change', function () {
+                    const selected = colleges.find(college => college.Name === this.value);
+
+                    if (selected) {
+                        document.getElementById('name').textContent = selected.Name;
+                        document.getElementById('address').textContent = selected.Address;
+                        // document.getElementById('latitude').textContent = selected.Latitude;
+                        // document.getElementById('longitude').textContent = selected.Longitude;
+                        document.getElementById('details').style.display = 'block';
+                    } else {
+                        document.getElementById('details').style.display = 'none';
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+            });
+    </script>
+
+    <hr>
+    <h2>Housing Filter Options</h2>
+    <form id="filter-form">
+        <label for="bedrooms">Bedrooms:</label>
+        <input type="number" id="bedrooms" name="bedrooms" min="0" placeholder="e.g. 2">
+
+        <label for="bathrooms">Bathrooms:</label>
+        <input type="number" id="bathrooms" name="bathrooms" min="0" step="0.5" placeholder="e.g. 1.5">
+
+        <label for="distance">Max Distance (miles):</label>
+        <input type="number" id="distance" name="distance" min="0" step="0.1" placeholder="e.g. 5">
+
+        <label for="min-price">Min Price ($):</label>
+        <input type="number" id="min-price" name="min-price" min="0" placeholder="e.g. 1000">
+
+        <label for="max-price">Max Price ($):</label>
+        <input type="number" id="max-price" name="max-price" min="0" placeholder="e.g. 2500">
+        
+        <br><br>
+        <label>
+            <input type="checkbox" id="prefer-distance" name="sort-distance">
+            Sort by Closest Distance
+        </label>
+        <label>
+            <input type="checkbox" id="prefer-price" name="sort-price">
+            Sort by Cheapest Price
+        </label>
+        <br><br>
+        <label for="priority">Sort Priority:</label>
+        <select id="priority" name="priority">
+            <option value="distance">Distance First</option>
+            <option value="price">Price First</option>
+        </select>
+        <br><br>
+        <button type="button" onclick="applyFilters()">Apply Filters</button>
+    </form>
+
+    <div id="rental-results"></div>
+
+    <script>
+        function applyFilters() {
+        const universitySelect = document.getElementById('university');
+        const universityName = universitySelect.value;
+        const universityLat = universitySelect.options[universitySelect.selectedIndex].getAttribute('data-lat');
+        const universityLon = universitySelect.options[universitySelect.selectedIndex].getAttribute('data-lon');
+        
+        const minPrice = document.getElementById('min-price').value || 0;
+        const maxPrice = document.getElementById('max-price').value || 1000000;
+        const maxDistance = document.getElementById('distance').value || 0;
+        const numBeds = document.getElementById('bedrooms').value;
+        const numBathrooms = document.getElementById('bathrooms').value;
+        const preferDistance = document.getElementById('prefer-distance').checked;
+        const preferPrice = document.getElementById('prefer-price').checked;
+        const priority = document.getElementById('priority').value;
+
+        console.log(`University Selected: ${numBathrooms}`);
+
+        // Optional: Display the selected university on the frontend
+        // const resultsDiv = document.getElementById('rental-results');
+        // resultsDiv.innerHTML = `<p>You selected: ${universityName} ${universityLat}</p>`;
+    
+        
+        fetch(`/api/rentals?min_price=${minPrice}&max_price=${maxPrice}&distance=${maxDistance}&university_lat=${universityLat}&university_lon=${universityLon}&bedrooms=${numBeds}&bathrooms=${numBathrooms}&prefer-distance=${preferDistance}&prefer-price=${preferPrice}&priority=${priority}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('rental-results');
+
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = '<p>No rentals found in this price range.</p>';
+                    return;
+                }
+                
+                // const top10 = data.slice(0, 10)
+                let html = '<ul>';
+                data.forEach((listing, index) => {
+                    html += `<li>
+                        <strong>Price:</strong> $${listing.Price} <br>
+                        <strong>Address:</strong> ${listing.Address} <br>
+                        <strong>Distance:</strong> ${listing.Distance.toFixed(2)} miles <br>
+                        <strong>Beds:</strong> ${listing.Beds} <br>
+                        <strong>Bathrooms:</strong> ${listing.Baths} <br>
+                        <a href="${listing['Listing URL']}" target="_blank">View Listing</a> <br>
+                        <button onclick="fetchTravelTime(${listing.Latitude}, ${listing.Longitude}, ${universityLat}, ${universityLon}, ${index}, 'foot-walking')">Show Walking Time</button>
+                        <button onclick="fetchTravelTime(${listing.Latitude}, ${listing.Longitude}, ${universityLat}, ${universityLon}, ${index}, 'divvy')">Show Biking Time</button> <br>
+                        ${listing['Direct Bus Route'] ? `<strong>Direct Bus Route:</strong> ${listing['Direct Bus Route']}<br>` : '<strong>No Direct Bus Route</strong><br>'}
+                        <div id="travel-time-${index}"></div>
+
+                    </li><br>`;
+                });
+                html += '</ul>';
+
+                resultsDiv.innerHTML = html;
+            })
+
+            .catch(error => {
+                console.error('Error fetching rental data:', error);
+            });
+        }
+
+        function fetchTravelTime(lat1, lon1, lat2, lon2, index, mode) {
+            const travelDiv = document.getElementById(`travel-time-${index}`);
+            travelDiv.textContent = "Loading...";
+
+            fetch(`/api/travel-time?lat1=${lat1}&lon1=${lon1}&lat2=${lat2}&lon2=${lon2}&mode=${mode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const label = mode === 'foot-walking' ? 'Walking' : 'Biking';
+                    if (data.travel_time !== null) {
+                        travelDiv.textContent = `${label} Time: ${data.travel_time} min`;
+                    } else {
+                        travelDiv.textContent = `${label} Time: Not Available`;
+                    }
+                })
+                .catch(error => {
+                    travelDiv.textContent = "Error fetching travel time.";
+                    console.error("Travel time fetch error:", error);
+                });
+        }
+    </script>
+</body>
